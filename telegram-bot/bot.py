@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import schedule
 import time
 import threading
+import os
 
 # تنظیمات لاگ
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -221,8 +222,8 @@ async def cancel(update: Update, context: CallbackContext):
 
 def main():
     # توکن ربات خود را وارد کنید
-    application = Application.builder().token("YOUR_BOT_TOKEN").build()
-    
+    application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
+
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
