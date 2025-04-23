@@ -234,7 +234,7 @@ def main():
             LAST_NAME: [MessageHandler(Filters.text & ~Filters.command, get_last_name)],
             PHONE: [MessageHandler(Filters.text & ~Filters.command, get_phone)],
             SELECT_CUSTOMER: [CallbackQueryHandler(select_customer)],
-            SELECT_FOOD: [CallbackQueryHandler(select food)],
+            SELECT_FOOD: [CallbackQueryHandler(selectـfood)],
             CUSTOM_PRICE: [MessageHandler(Filters.text & ~Filters.command, custom_price)],
             SELECT_PRICE: [MessageHandler(Filters.text & ~Filters.command, select_price)],
             PAYMENT_MENU: [CallbackQueryHandler(payment_menu)],
