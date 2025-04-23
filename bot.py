@@ -2,7 +2,7 @@ import sqlite3
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler, ConversationHandler, 
+    Application, CommandHandler, CallbackQueryHandler, ConversationHandler,
     MessageHandler, Filters, CallbackContext
 )
 from datetime import datetime, timedelta
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # اتصال به پایگاه داده
 def init_db():
-    conn = sqlite3.connect('accounting_bot.db')
+    conn = sqlite3.connect('/tmp/accounting_bot.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS customers 
                  (id INTEGER PRIMARY KEY, name TEXT, last_name TEXT, phone TEXT, balance REAL)''')
