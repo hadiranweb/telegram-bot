@@ -1,2 +1,1 @@
 accounting_bot.db
-echo "accounting_bot.db" > .gitignore
