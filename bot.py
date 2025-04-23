@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 ROLE, SELLER_PASSWORD, CUSTOMER_MENU, CREDIT_PURCHASE, ACCOUNT_MENU, TRACKING_CODE, REMINDER_TYPE, CUSTOMER_NAME, CUSTOMER_PHONE, CUSTOMER_PAYMENT, PAYMENT_AMOUNT, CONFIRM_PAYMENT = range(12)
 
 # اطلاعات فروشگاه
-STORE_OWNER = "نام صاحب فروشگاه"
+STORE_OWNER = "امین هاشمی"
 CARD_NUMBER = "1234-5678-9012-3456"
 SHABA_NUMBER = "IR123456789012345678901234"
-PASSWORD = "your_secure_password"  # رمز عبور فروشنده
+PASSWORD = os.getenv("SELLER_PASSWORD", "your_secure_password")
 
 def init_db():
     conn = sqlite3.connect('/tmp/accounting_bot.db')
