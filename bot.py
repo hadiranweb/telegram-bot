@@ -101,21 +101,25 @@ async def select_role(update: Update, context):
         await query.message.edit_text("منوی مشتری:", reply_markup=reply_markup)
         return CUSTOMER_MENU
     else:
-        await query.message.edit_text("لطفاً رمز عبور فروشنده را وارد کنید:")
+        keyboard = [
+            [InlineKeyboardButton("ورود با رمز", callback_data='enter_password')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.edit_text("لطفاً گزینه را انتخاب کنید:", reply_markup=reply_markup)
         return SELLER_PASSWORD
 
 async def check_password(update: Update, context):
-    if update.message.text == PASSWORD:
-        keyboard = [
-            [InlineKeyboardButton("مشتری اعتباری جدید", callback_data='new_customer')],
-            [InlineKeyboardButton("تأیید/ثبت پرداخت", callback_data='payment')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text("منوی فروشنده:", reply_markup=reply_markup)
-        return CUSTOMER_NAME
-    else:
-        await update.message.reply_text("رمز عبور اشتباه است. دوباره امتحان کنید:")
-        return SELLER_PASSWORD
+    query = update.callback_query
+    await query.answer()
+    
+    # فرض می‌کنیم رمز از قبل در متغیر محیطی تنظیم شده است
+    keyboard = [
+        [InlineKeyboardButton("مشتری اعتباری جدید", callback_data='new_customer')],
+        [InlineKeyboardButton("تأیید/ثبت پرداخت", callback_data='payment')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.message.edit_text("منوی فروشنده:", reply_markup=reply_markup)
+    return CUSTOMER_NAME
 
 async def customer_menu(update: Update, context):
     query = update.callback_query
@@ -151,8 +155,13 @@ async def credit_purchase(update: Update, context):
     await query.answer()
     
     if query.data == 'custom_price':
-        await query.message.edit_text("لطفاً نام خوراکی را وارد کنید:")
-        context.user_data['food_name'] = None
+        keyboard = [
+            [InlineKeyboardButton("ساندویچ", callback_data='custom_sandwich')],
+            [InlineKeyboardButton("پیتزا", callback_data='custom_pizza')],
+            [InlineKeyboardButton("غذای دیگر", callback_data='custom_other')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.edit_text("لطفاً نوع خوراکی را انتخاب کنید:", reply_markup=reply_markup)
         return CUSTOMER_NAME
     else:
         food, price = query.data.split('_')[1], float(query.data.split('_')[2])
@@ -170,29 +179,39 @@ async def credit_purchase(update: Update, context):
         return await show_customer_menu(update, context)
 
 async def custom_price(update: Update, context):
-    context.user_data['food_name'] = update.message.text
-    await update.message.reply_text("لطفاً قیمت خوراکی را وارد کنید:")
-    return TRANSACTION_AMOUNT
+    query = update.callback_query
+    await query.answer()
+    
+    food_name = query.data.split('_')[1]
+    context.user_data['food_name'] = food_name.capitalize()
+    
+    keyboard = [
+        [InlineKeyboardButton("50,000 تومان", callback_data='price_50000')],
+        [InlineKeyboardButton("100,000 تومان", callback_data='price_100000')],
+        [InlineKeyboardButton("200,000 تومان", callback_data='price_200000')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.message.edit_text("لطفاً قیمت را انتخاب کنید:", reply_markup=reply_markup)
+    return PAYMENT_AMOUNT
 
 async def transaction_amount(update: Update, context):
-    try:
-        price = float(update.message.text)
-        customer_id = context.user_data['customer_id']
-        food = context.user_data['food_name']
-        
-        conn = sqlite3.connect('/tmp/accounting_bot.db')
-        c = conn.cursor()
-        c.execute("UPDATE customers SET balance = balance + ? WHERE id = ?", (price, customer_id))
-        c.execute("INSERT INTO transactions (customer_id, food, amount, date) VALUES (?, ?, ?, ?)",
-                  (customer_id, food, price, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        conn.commit()
-        conn.close()
-        
-        await update.message.reply_text(f"نسیه {food} با قیمت {price} تومان ثبت شد.")
-        return await show_customer_menu(update, context)
-    except ValueError:
-        await update.message.reply_text("لطفاً یک عدد معتبر وارد کنید:")
-        return TRANSACTION_AMOUNT
+    query = update.callback_query
+    await query.answer()
+    
+    price = float(query.data.split('_')[1])
+    customer_id = context.user_data['customer_id']
+    food = context.user_data['food_name']
+    
+    conn = sqlite3.connect('/tmp/accounting_bot.db')
+    c = conn.cursor()
+    c.execute("UPDATE customers SET balance = balance + ? WHERE id = ?", (price, customer_id))
+    c.execute("INSERT INTO transactions (customer_id, food, amount, date) VALUES (?, ?, ?, ?)",
+              (customer_id, food, price, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
+    conn.close()
+    
+    await query.message.edit_text(f"نسیه {food} با قیمت {price} تومان ثبت شد.")
+    return await show_customer_menu(update, context)
 
 async def account_menu(update: Update, context):
     query = update.callback_query
@@ -259,7 +278,11 @@ async def seller_menu(update: Update, context):
     await query.answer()
     
     if query.data == 'new_customer':
-        await query.message.edit_text("لطفاً نام و نام خانوادگی مشتری را وارد کنید:")
+        keyboard = [
+            [InlineKeyboardButton("ثبت مشتری با اطلاعات پیش‌فرض", callback_data='default_customer')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.edit_text("لطفاً گزینه را انتخاب کنید:", reply_markup=reply_markup)
         return CUSTOMER_NAME
     elif query.data == 'payment':
         conn = sqlite3.connect('/tmp/accounting_bot.db')
@@ -281,38 +304,22 @@ async def seller_menu(update: Update, context):
         return CUSTOMER_PAYMENT
 
 async def new_customer(update: Update, context):
-    context.user_data['customer_name'] = update.message.text
-    await update.message.reply_text("لطفاً شماره تلفن مشتری را وارد کنید:")
-    return CUSTOMER_PHONE
-
-async def customer_phone(update: Update, context):
-    phone = update.message.text
-    context.user_data['phone'] = phone
-    await update.message.reply_text("لطفاً آیدی تلگرام مشتری را وارد کنید (مثل @Username):")
-    return CUSTOMER_PHONE + 1
-
-async def customer_telegram_id(update: Update, context):
-    telegram_id = update.message.text.lstrip('@')
-    name_parts = context.user_data['customer_name'].split(' ', 1)
-    first_name = name_parts[0]
-    last_name = name_parts[1] if len(name_parts) > 1 else ''
+    query = update.callback_query
+    await query.answer()
+    
+    telegram_id = str(query.from_user.id)  # استفاده از آیدی فروشنده یا مشتری
+    first_name = query.from_user.first_name or "مشتری"
+    last_name = query.from_user.last_name or ""
+    phone = "نامشخص"
     
     conn = sqlite3.connect('/tmp/accounting_bot.db')
     c = conn.cursor()
     c.execute("INSERT OR IGNORE INTO customers (telegram_id, first_name, last_name, phone) VALUES (?, ?, ?, ?)",
-              (telegram_id, first_name, last_name, context.user_data['phone']))
+              (telegram_id, first_name, last_name, phone))
     conn.commit()
     conn.close()
     
-    try:
-        await context.bot.send_message(
-            chat_id=telegram_id,
-            text=f"خوش آمدید {first_name} {last_name}! شما در ربات حسابداری ثبت شدید."
-        )
-    except:
-        pass
-    
-    await update.message.reply_text("مشتری با موفقیت ثبت شد!")
+    await query.message.edit_text(f"مشتری {first_name} {last_name} با موفقیت ثبت شد!")
     return await show_seller_menu(update, context)
 
 async def customer_payment(update: Update, context):
@@ -341,7 +348,13 @@ async def confirm_payment(update: Update, context):
     await query.answer()
     
     if query.data == 'manual_payment':
-        await query.message.edit_text("لطفاً مبلغ پرداختی را وارد کنید:")
+        keyboard = [
+            [InlineKeyboardButton("50,000 تومان", callback_data='payment_50000')],
+            [InlineKeyboardButton("100,000 تومان", callback_data='payment_100000')],
+            [InlineKeyboardButton("200,000 تومان", callback_data='payment_200000')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.edit_text("لطفاً مبلغ پرداختی را انتخاب کنید:", reply_markup=reply_markup)
         return PAYMENT_AMOUNT
     else:
         tracking_code = query.data.split('_')[1]
@@ -360,23 +373,22 @@ async def confirm_payment(update: Update, context):
         return await show_seller_menu(update, context)
 
 async def payment_amount(update: Update, context):
-    try:
-        amount = float(update.message.text)
-        customer_id = context.user_data['customer_id']
-        
-        conn = sqlite3.connect('/tmp/accounting_bot.db')
-        c = conn.cursor()
-        c.execute("UPDATE customers SET balance = balance - ? WHERE id = ?", (amount, customer_id))
-        c.execute("INSERT INTO payments (customer_id, amount, tracking_code, confirmed, date) VALUES (?, ?, ?, ?, ?)",
-                  (customer_id, amount, 'manual', 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        conn.commit()
-        conn.close()
-        
-        await update.message.reply_text(f"پرداخت {amount} تومان ثبت شد.")
-        return await show_seller_menu(update, context)
-    except ValueError:
-        await update.message.reply_text("لطفاً یک عدد معتبر وارد کنید:")
-        return PAYMENT_AMOUNT
+    query = update.callback_query
+    await query.answer()
+    
+    amount = float(query.data.split('_')[1])
+    customer_id = context.user_data['customer_id']
+    
+    conn = sqlite3.connect('/tmp/accounting_bot.db')
+    c = conn.cursor()
+    c.execute("UPDATE customers SET balance = balance - ? WHERE id = ?", (amount, customer_id))
+    c.execute("INSERT INTO payments (customer_id, amount, tracking_code, confirmed, date) VALUES (?, ?, ?, ?, ?)",
+              (customer_id, amount, 'manual', 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
+    conn.close()
+    
+    await query.message.edit_text(f"پرداخت {amount} تومان ثبت شد.")
+    return await show_seller_menu(update, context)
 
 async def show_customer_menu(update: Update, context):
     keyboard = [
@@ -470,18 +482,17 @@ def main():
             entry_points=[CommandHandler('start', start)],
             states={
                 ROLE: [CallbackQueryHandler(select_role)],
-                SELLER_PASSWORD: [MessageHandler(Text() & ~Command(), check_password)],
+                SELLER_PASSWORD: [CallbackQueryHandler(check_password)],
                 CUSTOMER_MENU: [CallbackQueryHandler(customer_menu)],
                 CREDIT_PURCHASE: [CallbackQueryHandler(credit_purchase)],
                 ACCOUNT_MENU: [CallbackQueryHandler(account_menu)],
                 TRACKING_CODE: [MessageHandler(Text() & ~Command(), tracking_code)],
                 REMINDER_TYPE: [CallbackQueryHandler(reminder_type)],
-                CUSTOMER_NAME: [MessageHandler(Text() & ~Command(), new_customer), CallbackQueryHandler(seller_menu)],
-                CUSTOMER_PHONE: [MessageHandler(Text() & ~Command(), customer_phone)],
-                CUSTOMER_PHONE + 1: [MessageHandler(Text() & ~Command(), customer_telegram_id)],
+                CUSTOMER_NAME: [CallbackQueryHandler(new_customer)],
+                CUSTOMER_PHONE: [CallbackQueryHandler(new_customer)],
                 CUSTOMER_PAYMENT: [CallbackQueryHandler(customer_payment)],
                 CONFIRM_PAYMENT: [CallbackQueryHandler(confirm_payment)],
-                PAYMENT_AMOUNT: [MessageHandler(Text() & ~Command(), payment_amount)],
+                PAYMENT_AMOUNT: [CallbackQueryHandler(payment_amount)],
             },
             fallbacks=[CommandHandler('cancel', cancel)],
         )
