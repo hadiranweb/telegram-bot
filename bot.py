@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 ROLE, SELLER_PASSWORD, CUSTOMER_MENU, CREDIT_PURCHASE, ACCOUNT_MENU, TRACKING_CODE, REMINDER_TYPE, CUSTOMER_NAME, CUSTOMER_PHONE, CUSTOMER_PAYMENT, PAYMENT_AMOUNT, CONFIRM_PAYMENT = range(12)
 
 # اطلاعات فروشگاه
-STORE_OWNER = "امین هاشمی"
+STORE_OWNER = "نام صاحب فروشگاه"
 CARD_NUMBER = "1234-5678-9012-3456"
 SHABA_NUMBER = "IR123456789012345678901234"
-PASSWORD = os.getenv("SELLER_PASSWORD", "your_secure_password")
+PASSWORD = os.getenv("SELLER_PASSWORD", "your_secure_password")  # رمز از متغیر محیطی
 
 def init_db():
     conn = sqlite3.connect('/tmp/accounting_bot.db')
@@ -59,7 +59,6 @@ def init_db():
         confirmed INTEGER DEFAULT 0,
         date TEXT
     )''')
-    # اضافه کردن چند خوراکی نمونه
     c.execute("INSERT OR IGNORE INTO foods (name, price) VALUES (?, ?)", ("ساندویچ", 50000))
     c.execute("INSERT OR IGNORE INTO foods (name, price) VALUES (?, ?)", ("پیتزا", 100000))
     conn.commit()
@@ -482,4 +481,18 @@ def main():
             CUSTOMER_NAME: [MessageHandler(Text() & ~Command(), new_customer), CallbackQueryHandler(seller_menu)],
             CUSTOMER_PHONE: [MessageHandler(Text() & ~Command(), customer_phone)],
             CUSTOMER_PHONE + 1: [MessageHandler(Text() & ~Command(), customer_telegram_id)],
+            CUSTOMER_PAYMENT: [CallbackQueryHandler(customer_payment)],
+            CONFIRM_PAYMENT: [CallbackQueryHandler(confirm_payment)],
+            PAYMENT_AMOUNT: [MessageHandler(Text() & ~Command(), payment_amount)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
     
+    application.add_handler(conv_handler)
+    
+    threading.Thread(target=run_scheduler, daemon=True).start()
+    
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()
