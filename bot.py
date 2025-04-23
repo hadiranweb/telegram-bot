@@ -12,6 +12,7 @@ import time
 import threading
 import os
 import calendar
+import telegram.error
 
 # تنظیم لاگینگ
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -24,7 +25,7 @@ ROLE, SELLER_PASSWORD, CUSTOMER_MENU, CREDIT_PURCHASE, ACCOUNT_MENU, TRACKING_CO
 STORE_OWNER = "نام صاحب فروشگاه"
 CARD_NUMBER = "1234-5678-9012-3456"
 SHABA_NUMBER = "IR123456789012345678901234"
-PASSWORD = os.getenv("SELLER_PASSWORD", "your_secure_password")  # رمز از متغیر محیطی
+PASSWORD = os.getenv("SELLER_PASSWORD", "your_secure_password")
 
 def init_db():
     conn = sqlite3.connect('/tmp/accounting_bot.db')
@@ -116,7 +117,6 @@ async def check_password(update: Update, context):
         await update.message.reply_text("رمز عبور اشتباه است. دوباره امتحان کنید:")
         return SELLER_PASSWORD
 
-# گردش کار مشتری
 async def customer_menu(update: Update, context):
     query = update.callback_query
     await query.answer()
@@ -254,7 +254,6 @@ async def reminder_type(update: Update, context):
     await query.message.edit_text(f"یادآور {reminder_type} تنظیم شد.")
     return await show_customer_menu(update, context)
 
-# گردش کار فروشنده
 async def seller_menu(update: Update, context):
     query = update.callback_query
     await query.answer()
@@ -305,7 +304,6 @@ async def customer_telegram_id(update: Update, context):
     conn.commit()
     conn.close()
     
-    # ارسال پیام خوش‌آمد به مشتری
     try:
         await context.bot.send_message(
             chat_id=telegram_id,
@@ -466,33 +464,19 @@ def run_scheduler():
         time.sleep(60)
 
 def main():
-    application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
-    
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            ROLE: [CallbackQueryHandler(select_role)],
-            SELLER_PASSWORD: [MessageHandler(Text() & ~Command(), check_password)],
-            CUSTOMER_MENU: [CallbackQueryHandler(customer_menu)],
-            CREDIT_PURCHASE: [CallbackQueryHandler(credit_purchase)],
-            ACCOUNT_MENU: [CallbackQueryHandler(account_menu)],
-            TRACKING_CODE: [MessageHandler(Text() & ~Command(), tracking_code)],
-            REMINDER_TYPE: [CallbackQueryHandler(reminder_type)],
-            CUSTOMER_NAME: [MessageHandler(Text() & ~Command(), new_customer), CallbackQueryHandler(seller_menu)],
-            CUSTOMER_PHONE: [MessageHandler(Text() & ~Command(), customer_phone)],
-            CUSTOMER_PHONE + 1: [MessageHandler(Text() & ~Command(), customer_telegram_id)],
-            CUSTOMER_PAYMENT: [CallbackQueryHandler(customer_payment)],
-            CONFIRM_PAYMENT: [CallbackQueryHandler(confirm_payment)],
-            PAYMENT_AMOUNT: [MessageHandler(Text() & ~Command(), payment_amount)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
-    
-    application.add_handler(conv_handler)
-    
-    threading.Thread(target=run_scheduler, daemon=True).start()
-    
-    application.run_polling()
-
-if __name__ == '__main__':
-    main()
+    try:
+        application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
+        conv_handler = ConversationHandler(
+            entry_points=[CommandHandler('start', start)],
+            states={
+                ROLE: [CallbackQueryHandler(select_role)],
+                SELLER_PASSWORD: [MessageHandler(Text() & ~Command(), check_password)],
+                CUSTOMER_MENU: [CallbackQueryHandler(customer_menu)],
+                CREDIT_PURCHASE: [CallbackQueryHandler(credit_purchase)],
+                ACCOUNT_MENU: [CallbackQueryHandler(account_menu)],
+                TRACKING_CODE: [MessageHandler(Text() & ~Command(), tracking_code)],
+                REMINDER_TYPE: [CallbackQueryHandler(reminder_type)],
+                CUSTOMER_NAME: [MessageHandler(Text() & ~Command(), new_customer), CallbackQueryHandler(seller_menu)],
+                CUSTOMER_PHONE: [MessageHandler(Text() & ~Command(), customer_phone)],
+                CUSTOMER_PHONE + 1: [MessageHandler(Text() & ~Command(), customer_telegram_id)],
+                
