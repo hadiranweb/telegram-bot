@@ -479,4 +479,19 @@ def main():
                 CUSTOMER_NAME: [MessageHandler(Text() & ~Command(), new_customer), CallbackQueryHandler(seller_menu)],
                 CUSTOMER_PHONE: [MessageHandler(Text() & ~Command(), customer_phone)],
                 CUSTOMER_PHONE + 1: [MessageHandler(Text() & ~Command(), customer_telegram_id)],
-                
+                CUSTOMER_PAYMENT: [CallbackQueryHandler(customer_payment)],
+                CONFIRM_PAYMENT: [CallbackQueryHandler(confirm_payment)],
+                PAYMENT_AMOUNT: [MessageHandler(Text() & ~Command(), payment_amount)],
+            },
+            fallbacks=[CommandHandler('cancel', cancel)],
+        )
+        application.add_handler(conv_handler)
+        threading.Thread(target=run_scheduler, daemon=True).start()
+        application.run_polling()
+    except telegram.error.Conflict:
+        logger.error("Conflict detected. Retrying in 10 seconds...")
+        time.sleep(10)
+        main()
+
+if __name__ == '__main__':
+    main()
